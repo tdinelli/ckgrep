@@ -1,0 +1,12 @@
+BasedOnStyle: Google
+ColumnLimit: 89
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+BinPackArguments: false
+BinPackParameters: false
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AlignAfterOpenBracket: BlockIndent
+IncludeBlocks: Preserve
+AllowShortFunctionsOnASingleLine: None
