@@ -169,6 +169,21 @@ contains_ci(std::string_view haystack, std::string_view needle) {
 }
 
 /**
+ * @brief Tests whether a byte is whitespace, per @ref white_space.
+ *
+ * @details A constexpr-friendly replacement for std::isspace, which takes an
+ * int and is not specified as constexpr. Used both by trim() and by callers
+ * that need to skip or scan whitespace one character at a time (e.g. walking
+ * backwards from the end of a line).
+ *
+ * @param c The byte to test.
+ * @return true if @p c is one of the bytes in white_space, false otherwise.
+ */
+[[nodiscard]] constexpr bool is_space(const char c) {
+  return white_space.find(c) != std::string_view::npos;
+}
+
+/**
  * @brief Removes leading and trailing whitespace from a string view.
  *
  * @details Strips spaces, tabs, carriage returns, and newlines (" \t\r\n")
