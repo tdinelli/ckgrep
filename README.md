@@ -1,5 +1,7 @@
 # ckgrep
 
+![ckgrep banner](assets/ckgrep-banner.png)
+
 `ckgrep` is a grep-like utility aware of some nuances of the CHEMKIN standard format that allows searching chemical reactions through a standard formalization of the chemical reactions as text.
 
 ## Usage
