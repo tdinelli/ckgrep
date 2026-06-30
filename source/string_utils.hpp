@@ -297,6 +297,40 @@ struct coefficient_token {
       std::abs(coefficient - rounded) < coefficient_integer_tolerance && rounded >= 1.0;
   return is_integer ? static_cast<int>(rounded) : 1;
 }
+
+/**
+ * @brief Appends expansion_count(coefficient) copies of one species occurrence
+ * to a caller-provided container.
+ *
+ * @details Both the query side (building pattern objects, see query.cpp) and
+ * the reaction side (building plain species names, see matcher.cpp) need the
+ * same "repeat this species N times per its coefficient" expansion; this
+ * factors out that shared loop so each caller only supplies how to build one
+ * occurrence.
+ *
+ * @tparam Container   A container supporting push_back, e.g. std::vector<T>.
+ * @tparam MakeOne      Callable taking no arguments and returning one element
+ *                      to push into @p out; invoked once per occurrence, so
+ *                      it should be cheap to call repeatedly (e.g. a copy or
+ *                      a small allocation), not something with side effects
+ *                      that must run exactly once.
+ * @param out          The container to append occurrences to.
+ * @param coefficient  The stoichiometric coefficient (see parse_coefficient()).
+ * @param make_one     Builds one element to append, called expansion_count()
+ *                     times.
+ *
+ * @code
+ * std::vector<std::string> names;
+ * append_expanded(names, 2.0, [] { return std::string("H"); });  // -> {"H", "H"}
+ * @endcode
+ */
+template <typename Container, typename MakeOne>
+void append_expanded(Container& out, double coefficient, MakeOne&& make_one) {
+  int count = expansion_count(coefficient);
+  for (int i = 0; i < count; ++i) {
+    out.push_back(make_one());
+  }
+}
 }  // namespace ckgrep::utils
 /* ----------------------------------------------------------------------------------- *\
 |                                                                                       |
