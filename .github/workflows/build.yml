@@ -24,6 +24,10 @@ jobs:
       - name: Build
         run: cmake --build build --config Release
 
+      - name: Test
+        working-directory: build
+        run: ctest --build-config Release --output-on-failure
+
       - name: Smoke test
         shell: bash
         run: |
