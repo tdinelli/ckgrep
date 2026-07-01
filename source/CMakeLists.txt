@@ -6,6 +6,7 @@ add_library(
   pattern.cpp
   query.cpp
   matcher.cpp
+  reaction_parser.cpp
   reaction_scanner.cpp
   utils.cpp
 )

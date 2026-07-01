@@ -161,6 +161,57 @@ TEST(ParseQuery, ArrowWithNoSpeciesOnEitherSideThrows) {
   EXPECT_THROW(parse_query("=>"), std::runtime_error);
   EXPECT_THROW(parse_query("="), std::runtime_error);
 }
+
+TEST(ParseQuery, NoMarkerLeavesThirdBodyUnset) {
+  query q = parse_query("CH4=CO2");
+  EXPECT_FALSE(q.third_body.has_value());
+}
+
+TEST(ParseQuery, FalloffMarkerBecomesAnyColliderConstraint) {
+  query q = parse_query("H+O2(+M)=");
+  ASSERT_TRUE(q.third_body.has_value());
+  EXPECT_EQ(q.third_body->kind, third_body_kind::falloff);
+  EXPECT_TRUE(q.third_body->any_collider);
+  // The marker is a constraint, not a species token.
+  ASSERT_TRUE(q.reactants.has_value());
+  EXPECT_EQ(q.reactants->tokens.size(), 2U);
+}
+
+TEST(ParseQuery, SpecificColliderBecomesPattern) {
+  query q = parse_query("H+OH(+N2)=");
+  ASSERT_TRUE(q.third_body.has_value());
+  EXPECT_EQ(q.third_body->kind, third_body_kind::falloff);
+  EXPECT_FALSE(q.third_body->any_collider);
+  ASSERT_NE(q.third_body->collider, nullptr);
+  EXPECT_TRUE(q.third_body->collider->matches("N2"));
+  EXPECT_FALSE(q.third_body->collider->matches("AR"));
+}
+
+TEST(ParseQuery, BareMBecomesMixtureConstraint) {
+  query q = parse_query("H+O2+M=HO2+M");
+  ASSERT_TRUE(q.third_body.has_value());
+  EXPECT_EQ(q.third_body->kind, third_body_kind::mixture);
+  ASSERT_TRUE(q.reactants.has_value());
+  EXPECT_EQ(q.reactants->tokens.size(), 2U);  // M is not a token
+}
+
+TEST(ParseQuery, ConstraintOnlyQueryIsValid) {
+  // "(+M)" alone: every fall-off reaction, no species constrained.
+  query q = parse_query("(+M)");
+  EXPECT_FALSE(q.any.has_value());
+  EXPECT_FALSE(q.reactants.has_value());
+  EXPECT_FALSE(q.products.has_value());
+  ASSERT_TRUE(q.third_body.has_value());
+  EXPECT_EQ(q.third_body->kind, third_body_kind::falloff);
+  EXPECT_TRUE(q.third_body->any_collider);
+}
+
+TEST(ParseQuery, ArrowlessBareMIsMixtureConstraintOnly) {
+  query q = parse_query("M");
+  EXPECT_FALSE(q.any.has_value());
+  ASSERT_TRUE(q.third_body.has_value());
+  EXPECT_EQ(q.third_body->kind, third_body_kind::mixture);
+}
 }  // namespace ckgrep
 /* ----------------------------------------------------------------------------------- *\
 |                                                                                       |

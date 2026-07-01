@@ -19,31 +19,21 @@
 \* ----------------------------------------------------------------------------------- */
 #pragma once
 
-#include <cctype>
 #include <cmath>
+#include <cstddef>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace ckgrep::utils {
 /**
  * @brief The set of characters treated as whitespace by trim().
  *
- * @details Space, tab, carriage return, and newline (" \t\r\n") -- the bytes
- * that can separate tokens or pad lines in a CHEMKIN mechanism file.
+ * @details Space, tab, carriage return, newline, form feed, and vertical
+ * tab (" \t\r\n\f\v"), the full classic C whitespace set, used defensively
+ * in case mechanism files contain legacy control characters.
  */
-inline constexpr std::string_view white_space = " \t\r\n";
-
-/**
- * @brief Maximum distance from a whole number for expansion_count() to treat
- * a coefficient as an integer.
- *
- * @details Stoichiometric coefficients are parsed as doubles (see
- * parse_coefficient()), so a value that is conceptually "2" may arrive as
- * something like 1.9999999998 due to floating-point rounding. This tolerance
- * absorbs that imprecision when deciding whether a coefficient should expand
- * into repeated species occurrences.
- */
-inline constexpr double coefficient_integer_tolerance = 1e-9;
+inline constexpr std::string_view white_space = " \t\r\n\f\v";
 
 /**
  * @brief Tests whether a glob pattern matches an entire string.
@@ -169,18 +159,22 @@ contains_ci(std::string_view haystack, std::string_view needle) {
 }
 
 /**
- * @brief Tests whether a byte is whitespace, per @ref white_space.
+ * @brief Tests whether a string starts with a case-insensitive prefix.
  *
- * @details A constexpr-friendly replacement for std::isspace, which takes an
- * int and is not specified as constexpr. Used both by trim() and by callers
- * that need to skip or scan whitespace one character at a time (e.g. walking
- * backwards from the end of a line).
+ * @details Compares only the leading @p prefix.size() bytes of @p s, folded to
+ * lowercase (see to_lower()). Used to recognize CHEMKIN keyword/sub-data lines
+ * (e.g. "LOW", "TROE") regardless of casing.
  *
- * @param c The byte to test.
- * @return true if @p c is one of the bytes in white_space, false otherwise.
+ * @param s      The string to test.
+ * @param prefix The prefix to look for, compared case-insensitively.
+ * @return true if @p s is at least as long as @p prefix and starts with it,
+ *         ignoring case.
  */
-[[nodiscard]] constexpr bool is_space(const char c) {
-  return white_space.find(c) != std::string_view::npos;
+[[nodiscard]] inline bool starts_with_ci(std::string_view s, std::string_view prefix) {
+  if (s.size() < prefix.size()) {
+    return false;
+  }
+  return to_lower(s.substr(0, prefix.size())) == to_lower(prefix);
 }
 
 /**
@@ -203,7 +197,7 @@ contains_ci(std::string_view haystack, std::string_view needle) {
  * trim("   \t  ");            // -> "" (empty)
  * @endcode
  */
-[[nodiscard]] constexpr std::string_view trim(std::string_view s) {
+[[nodiscard]] constexpr std::string_view trim(std::string_view s) noexcept {
   const auto b = s.find_first_not_of(white_space);
   if (b == std::string_view::npos) {
     return {};
@@ -288,6 +282,18 @@ struct coefficient_token {
 }
 
 /**
+ * @brief Maximum distance from a whole number for expansion_count() to treat
+ * a coefficient as an integer.
+ *
+ * @details Stoichiometric coefficients are parsed as doubles (see
+ * parse_coefficient()), so a value that is conceptually "2" may arrive as
+ * something like 1.9999999998 due to floating-point rounding. This tolerance
+ * absorbs that imprecision when deciding whether a coefficient should expand
+ * into repeated species occurrences.
+ */
+inline constexpr double coefficient_integer_tolerance = 1e-9;
+
+/**
  * @brief Number of discrete occurrences a stoichiometric coefficient expands to.
  *
  * @details A coefficient that is a whole number >= 1 (within floating-point
@@ -314,37 +320,37 @@ struct coefficient_token {
 }
 
 /**
- * @brief Appends expansion_count(coefficient) copies of one species occurrence
- * to a caller-provided container.
+ * @brief Splits a line into whitespace-separated tokens.
  *
- * @details Both the query side (building pattern objects, see query.cpp) and
- * the reaction side (building plain species names, see matcher.cpp) need the
- * same "repeat this species N times per its coefficient" expansion; this
- * factors out that shared loop so each caller only supplies how to build one
- * occurrence.
+ * @details Non-owning: every returned string_view points into the buffer
+ * backing @p line, so the result is only valid as long as that buffer is.
+ * Runs of whitespace (per @ref white_space) collapse to a single delimiter,
+ * so no empty tokens are produced. An empty or all-whitespace @p line
+ * yields an empty vector.
  *
- * @tparam Container   A container supporting push_back, e.g. std::vector<T>.
- * @tparam MakeOne      Callable taking no arguments and returning one element
- *                      to push into @p out; invoked once per occurrence, so
- *                      it should be cheap to call repeatedly (e.g. a copy or
- *                      a small allocation), not something with side effects
- *                      that must run exactly once.
- * @param out          The container to append occurrences to.
- * @param coefficient  The stoichiometric coefficient (see parse_coefficient()).
- * @param make_one     Builds one element to append, called expansion_count()
- *                     times.
+ * @param line The text to tokenize.
+ * @return The tokens, in left-to-right order.
  *
  * @code
- * std::vector<std::string> names;
- * append_expanded(names, 2.0, [] { return std::string("H"); });  // -> {"H", "H"}
+ * split_whitespace("H2+O2  1.0e13  0.0 5000.0");
+ *   // -> {"H2+O2", "1.0e13", "0.0", "5000.0"}
+ * split_whitespace("   \t ");  // -> {} (empty)
  * @endcode
  */
-template <typename Container, typename MakeOne>
-void append_expanded(Container& out, double coefficient, MakeOne&& make_one) {
-  int count = expansion_count(coefficient);
-  for (int i = 0; i < count; ++i) {
-    out.push_back(make_one());
+inline std::vector<std::string_view> split_whitespace(std::string_view line) {
+  std::vector<std::string_view> parts;
+  std::size_t i = 0;
+  while (i < line.size()) {
+    i = line.find_first_not_of(white_space, i);
+    if (i == std::string_view::npos) {
+      break;
+    }
+    const auto j = line.find_first_of(white_space, i);
+    const auto end = (j == std::string_view::npos) ? line.size() : j;
+    parts.push_back(line.substr(i, end - i));
+    i = end;
   }
+  return parts;
 }
 }  // namespace ckgrep::utils
 /* ----------------------------------------------------------------------------------- *\

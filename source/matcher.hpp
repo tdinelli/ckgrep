@@ -23,7 +23,7 @@
 #include <vector>
 
 #include "query.hpp"
-#include "reaction_scanner.hpp"
+#include "reaction_parser.hpp"
 
 namespace ckgrep {
 /**
@@ -35,28 +35,25 @@ enum class match_mode {
 };
 
 /**
- * @brief Expands a reaction side's species_amount list into one name per occurrence.
+ * @brief Flattens a reaction side's parsed_species list into one name per occurrence.
  *
- * @details A species with an integer coefficient >= 1 (e.g. "2H") contributes
- * that many entries, so a query of "H+H" matches a reaction side written as
- * "2H" and vice versa. A non-integer coefficient (e.g. "0.5O2") contributes
- * exactly one entry, the same as a species with no coefficient at all. See
- * utils::append_expanded() for the underlying expansion rule.
+ * @details Concatenates each parsed_species::expanded list, which already holds
+ * one entry per occurrence after coefficient expansion (so "2H" contributes two
+ * "H" entries). This is the form the bipartite matcher operates on.
  *
  * @param side One side (reactants or products) of a parsed reaction.
- * @return One name per occurrence, e.g. {"H", "O2"} expands "2H" to
- *         {"H", "H", "O2"}.
+ * @return One name per occurrence, e.g. "2H + O2" -> {"H", "H", "O2"}.
  */
-std::vector<std::string> expand_species(const std::vector<species_amount>& side);
+std::vector<std::string> flatten_species(const std::vector<parsed_species>& side);
 
 /**
  * @brief Tests whether one reaction side satisfies one query side.
  *
- * @details Expands @p species by coefficient (see expand_species()) and
- * checks that every token in @p side can be assigned a distinct expanded
- * occurrence (see can_assign()). Under match_mode::exact, the expanded side
- * must additionally have no leftover, unmatched occurrences -- i.e. the
- * token count and the expanded species count must be equal.
+ * @details Flattens @p species to one name per occurrence (see
+ * flatten_species()) and checks that every token in @p side can be assigned a
+ * distinct occurrence (see can_assign()). Under match_mode::exact, the
+ * flattened side must additionally have no leftover, unmatched occurrences --
+ * i.e. the token count and the occurrence count must be equal.
  *
  * @param side    The query side to test.
  * @param species One side (reactants or products) of a reaction.
@@ -65,7 +62,7 @@ std::vector<std::string> expand_species(const std::vector<species_amount>& side)
  */
 bool side_matches(
     const query_side& side,
-    const std::vector<species_amount>& species,
+    const std::vector<parsed_species>& species,
     match_mode mode
 );
 
@@ -82,7 +79,7 @@ bool side_matches(
  *
  * @param side    The query side whose tokens need an assignment.
  * @param species Species occurrences to assign tokens to (already expanded by
- *                coefficient -- see utils::append_expanded()), one entry per
+ *                coefficient -- see flatten_species()), one entry per
  *                occurrence, e.g. "2H" expands to {"H", "H"}.
  * @return true if an injective assignment exists (every token gets a distinct
  *         species), false otherwise.
@@ -122,6 +119,25 @@ bool find_augmenting_path(
 );
 
 /**
+ * @brief Tests whether a reaction's third body satisfies a query's constraint.
+ *
+ * @details When the query carries a third_body_constraint, the reaction's
+ * third_body_kind must equal the constrained kind, and -- for a fall-off
+ * constraint naming a specific collider -- the reaction's collider must match
+ * the constraint's pattern ("(+M)" in a query means any fall-off collider;
+ * see third_body_constraint). When the query carries no constraint, the
+ * third body is unconstrained under match_mode::contains, while under
+ * match_mode::exact the query describes the entire reaction, so the reaction
+ * must have no third body at all.
+ *
+ * @param q    The parsed query whose constraint (if any) to apply.
+ * @param r    The reaction whose third-body classification is tested.
+ * @param mode Decides what an absent constraint means; see @details.
+ * @return true if @p r's third body is acceptable for @p q under @p mode.
+ */
+bool third_body_matches(const query& q, const parsed_reaction& r, match_mode mode);
+
+/**
  * @brief Tests whether a reaction satisfies a query under a given match mode.
  *
  * @details query::reactants and query::products, when set, anchor to the
@@ -129,14 +145,18 @@ bool find_augmenting_path(
  * satisfy side_matches() against the corresponding side of @p r (an AND
  * across the sides that were constrained). query::any, when set instead,
  * is tested against the reactants OR the products of @p r (either-side
- * default, see query for which mode a parsed query is in).
+ * default, see query for which mode a parsed query is in). In every mode
+ * the reaction's third body must additionally satisfy the query's
+ * third-body constraint (see third_body_matches()); a query that consists
+ * of only a third-body marker constrains nothing else and therefore matches
+ * every reaction of that kind.
  *
  * @param q    The parsed query to test.
  * @param r    The reaction to test it against.
  * @param mode How strictly each side must line up; see match_mode.
  * @return true if @p r satisfies @p q under @p mode, false otherwise.
  */
-bool matches(const query& q, const reaction& r, match_mode mode);
+bool matches(const query& q, const parsed_reaction& r, match_mode mode);
 }  // namespace ckgrep
 /* ----------------------------------------------------------------------------------- *\
 |                                                                                       |

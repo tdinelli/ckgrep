@@ -23,16 +23,14 @@
 #include <vector>
 
 #include "matcher.hpp"
-#include "string_utils.hpp"
 
 namespace ckgrep {
-std::vector<std::string> expand_species(const std::vector<species_amount>& side) {
-  std::vector<std::string> expanded;
-  expanded.reserve(side.size());
-  for (const species_amount& sa : side) {
-    utils::append_expanded(expanded, sa.coefficient, [&] { return sa.name; });
+std::vector<std::string> flatten_species(const std::vector<parsed_species>& side) {
+  std::vector<std::string> names;
+  for (const parsed_species& sp : side) {
+    names.insert(names.end(), sp.expanded.begin(), sp.expanded.end());
   }
-  return expanded;
+  return names;
 }
 
 bool find_augmenting_path(
@@ -90,20 +88,41 @@ bool can_assign(const query_side& side, const std::vector<std::string>& species)
 
 bool side_matches(
     const query_side& side,
-    const std::vector<species_amount>& species,
+    const std::vector<parsed_species>& species,
     match_mode mode
 ) {
-  std::vector<std::string> expanded = expand_species(species);
-  if (!can_assign(side, expanded)) {
+  std::vector<std::string> names = flatten_species(species);
+  if (!can_assign(side, names)) {
     return false;
   }
-  if (mode == match_mode::exact && side.tokens.size() != expanded.size()) {
+  if (mode == match_mode::exact && side.tokens.size() != names.size()) {
     return false;
   }
   return true;
 }
 
-bool matches(const query& q, const reaction& r, match_mode mode) {
+bool third_body_matches(const query& q, const parsed_reaction& r, match_mode mode) {
+  if (!q.third_body) {
+    // No marker in the query: under contains the third body is simply not
+    // constrained; under exact the query describes the entire reaction, so
+    // the absence of a marker means the reaction must have none either.
+    return mode != match_mode::exact || r.third_body == third_body_kind::none;
+  }
+  const third_body_constraint& constraint = *q.third_body;
+  if (r.third_body != constraint.kind) {
+    return false;
+  }
+  if (constraint.kind == third_body_kind::falloff && !constraint.any_collider) {
+    return constraint.collider->matches(r.collider);
+  }
+  return true;
+}
+
+bool matches(const query& q, const parsed_reaction& r, match_mode mode) {
+  if (!third_body_matches(q, r, mode)) {
+    return false;
+  }
+
   if (q.any) {
     return side_matches(*q.any, r.reactants, mode) ||
            side_matches(*q.any, r.products, mode);

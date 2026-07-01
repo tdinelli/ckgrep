@@ -146,9 +146,8 @@ class glob_pattern : public species_pattern {
  *
  * @details Centralizes the choice of concrete pattern kind so that callers depend
  * only on the species_pattern interface. Today every token becomes a glob_pattern;
- * the @p use_regex flag is a reserved hook, wired through the signature now so that
- * callers already pass it, ready for a future regex_pattern subclass to be selected
- * here without changing any call sites.
+ * a future matching kind (e.g. a regex_pattern subclass) would be selected here
+ * without changing any call sites.
  *
  * @param source         The query token; ownership is taken by move.
  * @param case_sensitive When true, matching requires exact case. Defaults to false.
