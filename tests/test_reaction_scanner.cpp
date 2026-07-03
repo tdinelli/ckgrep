@@ -144,6 +144,30 @@ TEST(SearchText, HitTextIsFullLineWithComment) {
   EXPECT_EQ(hits[0].text, "H+OH=H2O 1.0 0.0 0.0 ! H2O formation note");
 }
 
+TEST(SearchText, PrettyHitCarriesFormattedReaction) {
+  query q = parse_query("H2O");
+  search_options opts;
+  opts.pretty = true;
+  std::vector<search_hit> hits = search_text(search_fixture, q, opts);
+  ASSERT_EQ(hits.size(), 2U);
+  // Normalized reaction, aligned rate columns, trailing comment gone.
+  EXPECT_NE(hits[0].text.find("H+OH=H2O"), std::string::npos);
+  EXPECT_NE(hits[0].text.find("1.00000E+00"), std::string::npos);
+  EXPECT_EQ(hits[0].text.find('!'), std::string::npos);
+}
+
+TEST(SearchText, PrettyCommentedOutReactionLosesItsBang) {
+  query q = parse_query("H2");
+  search_options opts;
+  opts.search_comments = true;
+  opts.pretty = true;
+  std::vector<search_hit> hits = search_text(search_fixture, q, opts);
+  ASSERT_EQ(hits.size(), 1U);
+  EXPECT_EQ(hits[0].line_number, 2U);
+  EXPECT_NE(hits[0].text.find("H2+OH=H2O+H"), std::string::npos);
+  EXPECT_EQ(hits[0].text.find('!'), std::string::npos);
+}
+
 TEST(SearchText, ExactModeForwardedToMatcher) {
   query q = parse_query("CH4=");
   search_options contains_opts;

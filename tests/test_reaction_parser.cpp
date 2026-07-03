@@ -338,6 +338,36 @@ TEST(ParseReactionLine, ShortProductSideWithoutRates) {
   ASSERT_EQ(r->products.size(), 1U);
   EXPECT_EQ(r->products[0].name, "CO2");
 }
+
+TEST(FormatReaction, NoRateTailYieldsReactionOnly) {
+  auto r = parse_reaction_line("CH4 + O2 => CO2");
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ(format_reaction(*r), "CH4+O2=>CO2");
+}
+
+TEST(FormatReaction, MarkersCoefficientsAndArrowNormalized) {
+  // '<=>' normalizes to '=', the mixture marker reads as one more species,
+  // and coefficients keep their compact spelling.
+  auto r = parse_reaction_line("H2+M<=>2H+M");
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ(format_reaction(*r), "H2+M=2H+M");
+
+  auto f = parse_reaction_line("H + CH3 (+M) = CH4 (+M)");
+  ASSERT_TRUE(f.has_value());
+  EXPECT_EQ(format_reaction(*f), "H+CH3(+M)=CH4(+M)");
+}
+
+TEST(FormatReaction, ArrheniusColumnsAligned) {
+  auto r = parse_reaction_line("H+CH3(+M)=CH4(+M)  1.27e16 -0.63 383.0");
+  ASSERT_TRUE(r.has_value());
+  std::string text = format_reaction(*r);
+  EXPECT_NE(text.find("H+CH3(+M)=CH4(+M)"), std::string::npos);
+  // Fixed-width columns: 13 characters per value, sign included, so rows
+  // stay aligned whether or not a value is negative.
+  EXPECT_NE(text.find("  1.27000E+16"), std::string::npos);
+  EXPECT_NE(text.find(" -6.30000E-01"), std::string::npos);
+  EXPECT_NE(text.find("  3.83000E+02"), std::string::npos);
+}
 }  // namespace ckgrep
 /* ----------------------------------------------------------------------------------- *\
 |                                                                                       |
