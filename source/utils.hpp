@@ -86,6 +86,11 @@ std::vector<std::filesystem::path> collect_files(const std::filesystem::path& pa
  * @p show_path is set (i.e. when more than one file is being searched).
  * Printing only -- hit counting is the caller's job.
  *
+ * When stdout is an interactive terminal the file name and line number are
+ * colorized with grep's default palette (magenta name, green number, cyan
+ * separators); output to pipes and files stays plain, and setting the
+ * NO_COLOR environment variable disables colors everywhere.
+ *
  * @param path        The file the match came from; printed when @p show_path.
  * @param line_number 1-based line number of the match.
  * @param content     The matched line text.

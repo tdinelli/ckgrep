@@ -18,11 +18,20 @@
 |                                                                                       |
 \* ----------------------------------------------------------------------------------- */
 #include <array>
+#include <cstdio>
+#include <cstdlib>
 #include <format>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string_view>
+
+#ifdef _WIN32
+#include <io.h>
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
 #include "utils.hpp"
 
@@ -125,16 +134,48 @@ std::vector<std::filesystem::path> collect_files(const std::filesystem::path& pa
   return files;
 }
 
+// ANSI colors only when stdout is an interactive terminal -- pipes and
+// redirections must stay clean -- and the user has not opted out through the
+// NO_COLOR convention (https://no-color.org). On Windows the console needs
+// virtual-terminal processing switched on before it understands the codes.
+bool stdout_supports_color() {
+  if (std::getenv("NO_COLOR") != nullptr) {
+    return false;
+  }
+#ifdef _WIN32
+  if (_isatty(_fileno(stdout)) == 0) {
+    return false;
+  }
+  HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
+  DWORD mode = 0;
+  if (handle == INVALID_HANDLE_VALUE || GetConsoleMode(handle, &mode) == 0) {
+    return false;
+  }
+  return SetConsoleMode(handle, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING) != 0;
+#else
+  return isatty(fileno(stdout)) == 1;
+#endif
+}
+
 void print_results(
     const std::filesystem::path& path,
     const std::size_t line_number,
     const std::string_view content,
     const bool show_path
 ) {
+  // grep's default palette: magenta file name, green line number, red separators; the
+  // matched text itself stays uncolored.
+  static const bool color = stdout_supports_color();
+  const std::string_view path_color = color ? "\033[35m" : "";
+  const std::string_view line_color = color ? "\033[32m" : "";
+  const std::string_view sep_color = color ? "\033[31m" : "";
+  const std::string_view reset = color ? "\033[0m" : "";
+
   if (show_path) {
-    std::cout << path.string() << ":";
+    std::cout << path_color << path.string() << reset << sep_color << ":" << reset;
   }
-  std::cout << line_number << ": " << content << "\n";
+  std::cout << line_color << line_number << reset << sep_color << ":" << reset << " "
+            << content << "\n";
 }
 }  // namespace ckgrep::utils
 /* ----------------------------------------------------------------------------------- *\
