@@ -1,0 +1,114 @@
+name: Release
+
+# Runs when a version tag (v0.1.0, v1.2.3, ...) is pushed. Each platform job
+# builds and tests in Release mode, then packages the binary with the LICENSE
+# and README into an archive named ckgrep-<version>-<platform>.<ext>. The
+# final job gathers every archive, writes a SHA256SUMS file, and publishes a
+# GitHub release with auto-generated notes.
+#
+# Cut a release with:
+#   git tag v0.1.0 && git push origin v0.1.0
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  # The binary reports the project() version from CMakeLists.txt, not the git
+  # tag: refuse to release when the two disagree.
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag matches project() version
+        run: |
+          CMAKE_VERSION=$(grep -m1 -E '^\s*VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          if [[ "v$CMAKE_VERSION" != "$GITHUB_REF_NAME" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match project VERSION $CMAKE_VERSION" >&2
+            exit 1
+          fi
+
+  package:
+    needs: check-version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x86_64
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64
+          - os: macos-latest
+            platform: macos-universal
+            # One binary for both Apple Silicon and Intel Macs
+            extra_flags: '"-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"'
+          - os: windows-latest
+            platform: windows-x86_64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.extra_flags }}
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test
+        working-directory: build
+        run: ctest --build-config Release --output-on-failure
+
+      - name: Package
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          PKG=ckgrep-$VERSION-${{ matrix.platform }}
+          mkdir "$PKG"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            cp build/source/Release/ckgrep.exe "$PKG/"
+          else
+            cp build/source/ckgrep "$PKG/"
+          fi
+          cp LICENSE README.md "$PKG/"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            7z a "$PKG.zip" "$PKG"
+          else
+            tar czf "$PKG.tar.gz" "$PKG"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.platform }}
+          path: |
+            ckgrep-*.tar.gz
+            ckgrep-*.zip
+          if-no-files-found: error
+
+  release:
+    needs: package
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: packages
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: packages
+        run: sha256sum * > SHA256SUMS
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" packages/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "ckgrep $GITHUB_REF_NAME" \
+            --verify-tag \
+            --generate-notes
