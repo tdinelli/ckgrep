@@ -1,8 +1,9 @@
-![ckgrep banner](assets/ckgrep-banner.png)
-
 [![Build](https://github.com/tdinelli/ckgrep/actions/workflows/build.yml/badge.svg)](https://github.com/tdinelli/ckgrep/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/tdinelli/ckgrep)](https://github.com/tdinelli/ckgrep/releases/latest)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
+
+![ckgrep banner](assets/ckgrep-banner.png)
 
 `ckgrep` (short for "CHEMKIN grep", or "chemical kinetics grep" if you prefer your acronyms spelled out) is a grep-like utility aware of some nuances of the CHEMKIN standard format that allows searching chemical reactions through a standard formalization of the chemical reactions as text. In principle, a sufficiently unhinged regular expression, one that accounts for stoichiometric coefficients, reaction arrows, third bodies, fall-off markers, and inline comments, all while not matching `CH4` against `CH4O`, piped into plain `grep` could do the same thing:
 
@@ -13,6 +14,8 @@ grep -nE '^[[:space:]]*([0-9.]*[[:space:]]*[A-Za-z0-9()+-]+[[:space:]]*\+[[:spac
 That finds reactions with `CH4` as a reactant. Want it as a product too, or paired with a specific co-reactant, or to also skip commented-out lines? Keep extending it. In practice, nobody wants to be the person maintaining that regex, so `ckgrep` already understands the chemistry wired into the CHEMKIN sintax or a CHEMKIN-like syntax and lets you write `"CH4="` instead.
 
 ## Build & install
+
+Prebuilt binaries for Linux (x86_64, arm64), macOS (universal), and Windows are attached to every [GitHub release](https://github.com/tdinelli/ckgrep/releases/latest); each archive contains the `ckgrep` binary, the LICENSE, and this README. To build from source instead:
 
 Requirements: CMake >= 3.20 and a C++ compiler with `<format>`/`<filesystem>` support (GCC >= 13, Clang >= 17, AppleClang >= 15, or MSVC >= 19.29). Dependencies (`argparse`, plus `googletest` when testing is enabled) are fetched automatically by CMake at configure time.
 
@@ -85,6 +88,7 @@ Flags:
 
 - `-e`, `--exact`: require an exact species match instead of "contains".
 - `-c`, `--comments`: also match commented-out reactions (text after `!` that parses as a matching reaction); see [Commented-out reactions](#commented-out-reactions--c).
+- `-p`, `--pretty`: reformat matches from the parsed reaction instead of printing the raw line; see [Pretty output](#pretty-output--p).
 - `-h`, `--help`: show usage.
 - `-v`, `--version`: show the version.
 
@@ -93,6 +97,8 @@ Flags:
 > interpreted by your shell before `ckgrep` ever sees it.
 
 Exit status: `0` when at least one line matched, `1` when nothing matched or the invocation was invalid, `2` when the query cannot be parsed.
+
+When stdout is a terminal, file names and line numbers are colorized with grep's palette (magenta name, green number, cyan separators). Piped or redirected output stays plain, and setting the [`NO_COLOR`](https://no-color.org) environment variable disables colors everywhere.
 
 ## Query syntax
 
@@ -229,6 +235,26 @@ Mechanism files accumulate history: superseded rates are often left in place, co
 $ ckgrep -c "CH3O2=CH2O+OH" examples/C3-V4.0.1-FULL.CKI
 2328: !CH3O2=CH2O+OH  8.25E+2 0.85 39000.0 !\Author: SP !\Ref: Villano [...]
 2330: CH3O2=CH2O+OH    4.31E+19   -3.86   36270
+```
+
+### Pretty output (`-p`)
+
+Instead of the raw line, `-p` re-renders each hit from the parsed reaction: comments dropped entirely, the arrow normalized (`=` reversible, `=>` irreversible), third-body markers re-attached, the reaction padded to a constant width, and the Arrhenius triple in fixed-width scientific columns so consecutive hits columnize:
+
+```
+$ ckgrep -p "H+H" examples/TOT_HT_LT_SOOT_NOX.CKI
+225: H2+M=2H+M                                                                 4.57700E+19   -1.40000E+00    1.04400E+05
+382: O2+CH2=>2H+CO2                                                            2.64000E+12    0.00000E+00    1.50000E+03
+384: O+CH2=>2H+CO                                                              5.00000E+13    0.00000E+00    0.00000E+00
+...
+```
+
+Combined with `-c`, a commented-out reaction is rendered clean, without its `!` — the messy provenance tail from the example above becomes:
+
+```
+$ ckgrep -p -c "CH3O2=CH2O+OH" examples/C3-V4.0.1-FULL.CKI
+2328: CH3O2=CH2O+OH                                                             8.25000E+02    8.50000E-01    3.90000E+04
+2330: CH3O2=CH2O+OH                                                             4.31000E+19   -3.86000E+00    3.62700E+04
 ```
 
 ---

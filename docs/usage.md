@@ -28,12 +28,18 @@ interpreted by your shell before `ckgrep` ever sees it.
 Exit status: `0` when at least one line matched, `1` when nothing matched or
 the invocation was invalid, `2` when the query cannot be parsed.
 
+When stdout is a terminal, file names and line numbers are colorized with
+grep's palette (magenta name, green number, cyan separators). Piped or
+redirected output stays plain, and setting the NO_COLOR environment variable
+(https://no-color.org) disables colors everywhere.
+
 ### Options
 
 | Flag | Effect |
 |------|--------|
 | `-e`, `--exact` | Require the whole reaction to match the query exactly, instead of "contains". |
 | `-c`, `--comments` | Also match commented-out reactions (text after `!` that parses as a matching reaction). |
+| `-p`, `--pretty` | Reformat matches from the parsed reaction instead of printing the raw line. |
 | `-h`, `--help` | Show usage and exit. |
 | `-v`, `--version` | Show the version and exit. |
 
@@ -206,6 +212,32 @@ $ ckgrep -c "CH3O2=CH2O+OH" examples/C3-V4.0.1-FULL.CKI
 This also finds commented-out alternatives stashed *after* a live reaction
 (`H2+M=H+H+M ... !CH4+M=CH3+H+M ...`), since a trailing comment is tested
 as a reaction the same way.
+
+## Pretty output (-p)
+
+Instead of the raw line, `-p` re-renders each hit from the parsed reaction:
+comments dropped entirely, the arrow normalized (`=` reversible, `=>`
+irreversible), third-body markers re-attached, the reaction padded to a
+constant width, and the Arrhenius triple in fixed-width scientific columns
+so consecutive hits columnize (the padding is compressed here to fit the
+page; real output pads every reaction to 70 characters):
+
+```
+$ ckgrep -p "H+H" examples/TOT_HT_LT_SOOT_NOX.CKI
+225: H2+M=2H+M            4.57700E+19   -1.40000E+00    1.04400E+05
+382: O2+CH2=>2H+CO2       2.64000E+12    0.00000E+00    1.50000E+03
+384: O+CH2=>2H+CO         5.00000E+13    0.00000E+00    0.00000E+00
+...
+```
+
+Combined with `-c`, a commented-out reaction is rendered clean, without its
+`!` -- the superseded rate from the previous section becomes:
+
+```
+$ ckgrep -p -c "CH3O2=CH2O+OH" examples/C3-V4.0.1-FULL.CKI
+2328: CH3O2=CH2O+OH        8.25000E+02    8.50000E-01    3.90000E+04
+2330: CH3O2=CH2O+OH        4.31000E+19   -3.86000E+00    3.62700E+04
+```
 
 ## API reference
 
