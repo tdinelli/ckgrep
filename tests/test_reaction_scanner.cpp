@@ -137,6 +137,19 @@ TEST(SearchText, CommentedOutReactionOwnTrailingCommentTruncated) {
   ASSERT_EQ(hits.size(), 1U);
 }
 
+TEST(SearchText, DoubleAndTripleBangCommentedReactionsFound) {
+  // Mechanisms are sometimes double- (or triple-) commented out; all the
+  // leading '!' marks must be skipped, not just the first one.
+  query q = parse_query("CH3");
+  search_options opts;
+  opts.search_comments = true;
+  std::vector<search_hit> hits =
+      search_text("!!CH4=CH3+H 1.0 0.0 0.0\n!!!CH4=CH3+H 1.0 0.0 0.0\n", q, opts);
+  ASSERT_EQ(hits.size(), 2U);
+  EXPECT_EQ(hits[0].line_number, 1U);
+  EXPECT_EQ(hits[1].line_number, 2U);
+}
+
 TEST(SearchText, HitTextIsFullLineWithComment) {
   query q = parse_query("H2O");
   std::vector<search_hit> hits = search_text(search_fixture, q, {});
