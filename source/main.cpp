@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
 
   auto files_arg = program->get<std::vector<std::string>>("files");
   if (files_arg.empty()) {
-    files_arg.emplace_back(std::filesystem::current_path().c_str());
+    files_arg.emplace_back(std::filesystem::current_path().string());
   }
 
   std::vector<std::filesystem::path> files;
