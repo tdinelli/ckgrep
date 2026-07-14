@@ -89,15 +89,49 @@ jobs:
             ckgrep-*.zip
           if-no-files-found: error
 
+  # Builds the Doxygen/LaTeX PDF manual once (it isn't platform-specific) and
+  # uploads it alongside the per-platform packages.
+  docs:
+    needs: check-version
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Doxygen and LaTeX
+        run: sudo apt-get update && sudo apt-get install -y doxygen texlive-latex-base texlive-latex-extra texlive-fonts-recommended
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_DOC=ON
+
+      - name: Build manual
+        run: cmake --build build --target docs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ckgrep-manual
+          path: build/docs/latex/refman.pdf
+          if-no-files-found: error
+
   release:
-    needs: package
+    needs: [package, docs]
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: packages
+          pattern: package-*
           merge-multiple: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ckgrep-manual
+          path: packages
+
+      - name: Rename manual
+        working-directory: packages
+        run: mv refman.pdf ckgrep-manual.pdf
 
       - name: Checksums
         working-directory: packages
