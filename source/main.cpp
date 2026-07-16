@@ -32,8 +32,6 @@ int main(int argc, char** argv) {
   // command line arguments parsing see cli.hpp/.cpp
   auto program = ckgrep::cli::parse_args(argc, argv);
 
-  auto query_text = program->get<std::string>("query");
-
   ckgrep::search_options opts;
   if (program->get<bool>("--exact")) {
     opts.mode = ckgrep::match_mode::exact;
@@ -41,22 +39,23 @@ int main(int argc, char** argv) {
   opts.search_comments = program->get<bool>("--comments");
   opts.pretty = program->get<bool>("--pretty");
 
+
   // parsing and analyzing the query this instantiate the query parsing engine see the
   // doc to understand how to generate an appropriate query
+  auto query_text = program->get<std::string>("query");
+  bool species_mode = program->get<bool>("--species");
   ckgrep::query q;
   try {
-    q = ckgrep::parse_query(query_text);
+    q = ckgrep::parse_query(query_text, /*case_sensitive=*/false, species_mode);
   } catch (const std::exception& e) {
     std::cerr << "query error: " << e.what() << "\n";
     return 2;
   }
 
-  [[maybe_unused]] bool species_mode = program->get<bool>("--species");
   auto input_arg = program->get<std::vector<std::string>>("--input");
   [[maybe_unused]] auto thermo_arg = program->get<std::vector<std::string>>("--thermo");
   [[maybe_unused]] auto transport_arg =
       program->get<std::vector<std::string>>("--transport");
-
   auto files_arg = program->get<std::vector<std::string>>("files");
   files_arg.insert(files_arg.end(), input_arg.begin(), input_arg.end());
   if (files_arg.empty()) {

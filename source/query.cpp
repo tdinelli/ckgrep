@@ -32,10 +32,8 @@ namespace ckgrep {
 // occurrence into a pattern. A leading stoichiometric coefficient (e.g. "2H")
 // expands into that many repeated tokens, so a query of "2H" and "H+H" parse
 // to the same query_side and match each other's reaction-side form.
-query_side make_query_side(
-    const std::vector<parsed_species>& species,
-    bool case_sensitive
-) {
+query_side
+make_query_side(const std::vector<parsed_species>& species, bool case_sensitive) {
   query_side result;
   for (const parsed_species& sp : species) {
     for (const std::string& name : sp.expanded) {
@@ -71,10 +69,24 @@ void merge_third_body(query& result, const parsed_side& side, bool case_sensitiv
   result.third_body = std::move(constraint);
 }
 
-query parse_query(std::string_view text, bool case_sensitive) {
+query parse_query(std::string_view text, bool case_sensitive, bool species_only) {
   std::string_view t = utils::trim(text);
   if (t.empty()) {
     throw std::runtime_error("empty query");
+  }
+
+  if (species_only) {
+    if (char bad = find_reaction_syntax(t); bad != '\0') {
+      throw std::runtime_error(
+          std::string("species query cannot contain '") + bad + "'"
+      );
+    }
+    query result;
+    query_side side;
+    side.tokens.push_back(make_pattern(std::string(t), case_sensitive));
+    result.any = std::move(side);
+
+    return result;
   }
 
   // The query grammar is the reaction grammar without the trailing rate

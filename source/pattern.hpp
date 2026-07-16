@@ -156,6 +156,21 @@ class glob_pattern : public species_pattern {
 std::unique_ptr<species_pattern>
 make_pattern(const std::string& source, bool case_sensitive = false);
 
+/**
+ * @brief Detects reaction-only syntax in a bare species query token.
+ *
+ * @details A species name never legitimately contains '=', '+', '<' or '>' --
+ * those are reaction-arrow and side-joiner syntax meaningful only to
+ * parse_query(). A bare species query (as used by -s/--species) that contains
+ * one of them is almost certainly a reaction query typed by mistake, so
+ * callers should reject it outright rather than pass it to make_pattern(),
+ * where it would just silently fail to match any real species.
+ *
+ * @param token The raw query token to scan.
+ * @return The first offending character found, or '\0' if none.
+ */
+[[nodiscard]] char find_reaction_syntax(std::string_view token);
+
 }  // namespace ckgrep
 /* ----------------------------------------------------------------------------------- *\
 |                                                                                       |

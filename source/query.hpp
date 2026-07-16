@@ -113,14 +113,27 @@ struct query {
  * The @p case_sensitive flag is forwarded unchanged to every pattern built for the
  * query, so a single query is uniformly case-sensitive (or not).
  *
+ * When @p species_only is set, the text is a bare species pattern rather than
+ * a reaction query: the reaction grammar (arrows, `+` joiners, third-body
+ * markers) is skipped entirely, and the whole trimmed text becomes a single
+ * pattern in @ref query::any via make_pattern(). Reaction-only syntax --
+ * `=`, `+`, `<`, `>` -- has no meaning here and is rejected, since a species
+ * name never legitimately contains it and letting it through would silently
+ * fail to match anything instead of signaling the mistake.
+ *
  * @param text           The raw query string, e.g. "CH4 + O2 => *OH".
  * @param case_sensitive When true, patterns require exact-case matching.
  *                       Defaults to false (case-insensitive).
+ * @param species_only   When true, parse @p text as a bare species pattern
+ *                       (see above) instead of a reaction query. Defaults to
+ *                       false.
  * @return A @ref query with the appropriate side(s) and/or third-body
- *         constraint populated.
+ *         constraint populated. Under @p species_only, only @ref query::any
+ *         is set, holding exactly one pattern.
  *
- * @throws std::runtime_error if @p text is empty or contains neither a
- *         species nor a third-body marker.
+ * @throws std::runtime_error if @p text is empty, contains neither a species
+ *         nor a third-body marker, or (under @p species_only) contains
+ *         reaction-only syntax.
  *
  * @code
  * parse_query("CH4 + O2");        // any = {CH4, O2}, matched on either side
@@ -128,9 +141,14 @@ struct query {
  * parse_query("O2 <=> O + O");    // reactants = {O2}, products = {O, O}
  * parse_query("H+O2(+M)=");       // reactants = {H, O2}, any fall-off collider
  * parse_query("(+N2)");           // fall-off reactions with collider N2 only
+ * parse_query("C3H5*", false, true);  // any = {C3H5*}, species-only mode
  * @endcode
  */
-query parse_query(std::string_view text, bool case_sensitive = false);
+query parse_query(
+    std::string_view text,
+    bool case_sensitive = false,
+    bool species_only = false
+);
 }  // namespace ckgrep
 /* ----------------------------------------------------------------------------------- *\
 |                                                                                       |

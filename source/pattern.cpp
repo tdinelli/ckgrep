@@ -46,6 +46,12 @@ std::unique_ptr<species_pattern>
 make_pattern(const std::string& source, bool case_sensitive) {
   return std::make_unique<glob_pattern>(std::move(source), case_sensitive);
 }
+
+char find_reaction_syntax(std::string_view token) {
+  constexpr std::string_view reaction_chars = "=+<>";
+  auto pos = token.find_first_of(reaction_chars);
+  return pos == std::string_view::npos ? '\0' : token[pos];
+}
 }  // namespace ckgrep
 /* ----------------------------------------------------------------------------------- *\
 |                                                                                       |
