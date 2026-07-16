@@ -83,6 +83,21 @@ std::unique_ptr<argparse::ArgumentParser> parse_args(int argc, char** argv) {
       )
       .nargs(argparse::nargs_pattern::any)
       .default_value(std::vector<std::string>{});
+  program->add_argument("-i", "--input")
+      .help("Explicit alias for the kinetics 'files' positional")
+      .nargs(argparse::nargs_pattern::at_least_one)
+      .default_value(std::vector<std::string>{});
+  program->add_argument("--thermo")
+      .help("External thermo file(s) to search alongside the kinetics input")
+      .nargs(argparse::nargs_pattern::at_least_one)
+      .default_value(std::vector<std::string>{});
+  program->add_argument("--transport")
+      .help("External transport file(s) to search alongside the kinetics input")
+      .nargs(argparse::nargs_pattern::at_least_one)
+      .default_value(std::vector<std::string>{});
+  program->add_argument("-s", "--species")
+      .help("Search for the species name instead of matching reactions name.")
+      .flag();
   program->add_argument("-e", "--exact")
       .help("Whether the query must match exactly")
       .flag();

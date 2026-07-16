@@ -51,7 +51,14 @@ int main(int argc, char** argv) {
     return 2;
   }
 
+  [[maybe_unused]] bool species_mode = program->get<bool>("--species");
+  auto input_arg = program->get<std::vector<std::string>>("--input");
+  [[maybe_unused]] auto thermo_arg = program->get<std::vector<std::string>>("--thermo");
+  [[maybe_unused]] auto transport_arg =
+      program->get<std::vector<std::string>>("--transport");
+
   auto files_arg = program->get<std::vector<std::string>>("files");
+  files_arg.insert(files_arg.end(), input_arg.begin(), input_arg.end());
   if (files_arg.empty()) {
     files_arg.emplace_back(std::filesystem::current_path().string());
   }
