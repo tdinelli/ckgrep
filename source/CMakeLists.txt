@@ -12,6 +12,7 @@ add_library(
   matcher.cpp
   reaction_parser.cpp
   reaction_scanner.cpp
+  species_scanner.cpp
   utils.cpp
 )
 target_include_directories(ckgrep_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

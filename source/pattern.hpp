@@ -170,7 +170,6 @@ make_pattern(const std::string& source, bool case_sensitive = false);
  * @return The first offending character found, or '\0' if none.
  */
 [[nodiscard]] char find_reaction_syntax(std::string_view token);
-
 }  // namespace ckgrep
 /* ----------------------------------------------------------------------------------- *\
 |                                                                                       |

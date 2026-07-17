@@ -77,9 +77,7 @@ query parse_query(std::string_view text, bool case_sensitive, bool species_only)
 
   if (species_only) {
     if (char bad = find_reaction_syntax(t); bad != '\0') {
-      throw std::runtime_error(
-          std::string("species query cannot contain '") + bad + "'"
-      );
+      throw std::runtime_error(std::string("species query cannot contain '") + bad + "'");
     }
     query result;
     query_side side;
