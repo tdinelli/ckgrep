@@ -80,6 +80,20 @@ std::string read_file(const std::filesystem::path& path);
 std::vector<std::filesystem::path> collect_files(const std::filesystem::path& path);
 
 /**
+ * @brief Resolves several CLI-supplied paths into the regular files to search.
+ *
+ * @details Applies collect_files() to each of @p paths in order and
+ * concatenates the results, so a caller with several inputs for the same
+ * search category (e.g. multiple `--thermo` files) does not need to repeat
+ * the loop.
+ *
+ * @param paths The CLI-supplied paths to resolve.
+ * @return The regular files to search, in the order @p paths were given.
+ */
+std::vector<std::filesystem::path>
+collect_files(const std::vector<std::filesystem::path>& paths);
+
+/**
  * @brief Prints one matched line to stdout in grep style.
  *
  * @details Output format is `line: content`, prefixed with `path:` when

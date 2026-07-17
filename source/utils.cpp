@@ -134,6 +134,17 @@ std::vector<std::filesystem::path> collect_files(const std::filesystem::path& pa
   return files;
 }
 
+std::vector<std::filesystem::path> collect_files(
+    const std::vector<std::filesystem::path>& paths
+) {
+  std::vector<std::filesystem::path> files;
+  for (const auto& path : paths) {
+    auto resolved = collect_files(path);
+    files.insert(files.end(), resolved.begin(), resolved.end());
+  }
+  return files;
+}
+
 // ANSI colors only when stdout is an interactive terminal -- pipes and
 // redirections must stay clean -- and the user has not opted out through the
 // NO_COLOR convention (https://no-color.org). On Windows the console needs
