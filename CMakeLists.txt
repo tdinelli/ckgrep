@@ -2,9 +2,10 @@
 # ckgrep - a grep-like tool for searching CHEMKIN reaction mechanisms
 #
 # Build options:
-#   BUILD_TESTING    Build the test suite (default ON, target: ckgrep_tests)
-#   BUILD_DOC        Enable the Doxygen PDF manual (default OFF, target: docs)
-#   ENABLE_COVERAGE  Clang source-based coverage (default OFF, target: coverage)
+#   BUILD_TESTING      Build the test suite (default ON, target: ckgrep_tests)
+#   BUILD_DOC          Enable the Doxygen PDF manual (default OFF, target: docs)
+#   ENABLE_COVERAGE    Clang source-based coverage (default OFF, target: coverage)
+#   INSTALL_VIM_PLUGIN Install the Vim/Neovim plugin (default OFF)
 #
 # Layout:
 #   source/          core library + ckgrep executable
@@ -15,7 +16,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(
   ckgrep
-  VERSION 1.1.1
+  VERSION 1.1.2
   LANGUAGES CXX
   DESCRIPTION "A grep-like tool for searching CHEMKIN reaction mechanisms"
 )
@@ -44,6 +45,16 @@ add_subdirectory(source)
 option(BUILD_DOC "Build the ckgrep documentation" OFF)
 if(BUILD_DOC)
   include(cmake/Documentation.cmake)
+endif()
+
+# Opt-in install of the Vim/Neovim plugin alongside the binary (see editor/vim)
+option(
+  INSTALL_VIM_PLUGIN
+    "Install the Vim/Neovim plugin into <prefix>/share/ckgrep/vim"
+  OFF
+)
+if(INSTALL_VIM_PLUGIN)
+  include(cmake/VimPlugin.cmake)
 endif()
 
 # Tests are on by default; -DBUILD_TESTING=OFF also skips fetching googletest

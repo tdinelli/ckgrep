@@ -37,7 +37,7 @@ function! ckgrep#search(bang, args) abort
 
   " -H forces the file name on every hit so quickfix entries can jump; the
   " pipe makes ckgrep emit plain (uncolored) output on its own.
-  let l:out = systemlist(l:exe . ' -H ' . l:args)
+  let l:out = systemlist(shellescape(l:exe) . ' -H ' . l:args)
 
   if v:shell_error == 2
     " Malformed query: ckgrep printed the reason on one line.
