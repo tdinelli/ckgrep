@@ -35,6 +35,7 @@ The `ckgrep` binary is produced at `build/source/ckgrep`.
 | `BUILD_TESTING` | `ON` | Build the test suite (`ckgrep_tests`), run with `ctest`. |
 | `BUILD_DOC` | `OFF` | Enable the `docs` target building the PDF manual. |
 | `ENABLE_COVERAGE` | `OFF` | Instrument for coverage and enable the `coverage` target (Clang/AppleClang only). |
+| `INSTALL_VIM_PLUGIN` | `OFF` | Install the [Vim/Neovim plugin](editor/vim) into `<prefix>/share/ckgrep/vim`. |
 
 ### Tests
 
@@ -74,7 +75,7 @@ cmake --install build                          # system prefix, e.g. /usr/local
 cmake --install build --prefix "$HOME/.local"  # custom prefix
 ```
 
-Installs the `ckgrep` binary into `<prefix>/bin`, and the LICENSE — plus the PDF manual when it has been built — into `<prefix>/share/doc/ckgrep/`.
+Installs the `ckgrep` binary into `<prefix>/bin`, and the LICENSE — plus the PDF manual when it has been built — into `<prefix>/share/doc/ckgrep/`. With `-DINSTALL_VIM_PLUGIN=ON`, the [Vim/Neovim plugin](editor/vim) is installed too, into `<prefix>/share/ckgrep/vim/` — see [its README](editor/vim/README.md#from-a-cmake-install) for pointing a plugin manager at it.
 
 ## Usage
 

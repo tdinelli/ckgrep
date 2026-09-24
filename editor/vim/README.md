@@ -24,6 +24,34 @@ let g:ckgrep_executable = '/opt/ckgrep/bin/ckgrep'
 
 The plugin lives in the `editor/vim` subdirectory of the ckgrep repository.
 
+### From a CMake install
+
+Building `ckgrep` from source with `-DINSTALL_VIM_PLUGIN=ON` installs this
+plugin into `<prefix>/share/ckgrep/vim/` alongside the binary in
+`<prefix>/bin/`, so a plugin manager can point straight at the installed
+prefix instead of a separate git checkout:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DINSTALL_VIM_PLUGIN=ON
+cmake --build build
+cmake --install build --prefix "$HOME/.tools/ckgrep"
+```
+
+With [lazy.nvim](https://github.com/folke/lazy.nvim):
+
+```lua
+{
+  dir = vim.fn.expand("~/.tools/ckgrep/share/ckgrep/vim"),
+  name = "vim-ckgrep",
+  cmd = "Ckgrep",
+  init = function()
+    vim.g.ckgrep_executable = vim.fn.expand("~/.tools/ckgrep/bin/ckgrep")
+  end,
+}
+```
+
+### From a git checkout
+
 With [vim-plug](https://github.com/junegunn/vim-plug):
 
 ```vim
